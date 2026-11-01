@@ -1,0 +1,25 @@
+name: Mihara Access Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Ana-slo access
+        run: |
+          python - <<'PY'
+          import urllib.request
+          url = 'https://ana-slo.com/2026-10-31-hyper-arrow%E7%BE%8E%E5%8E%9F%E5%BA%97-data/'
+          try:
+              req = urllib.request.Request(url, headers={'User-Agent': 'MiharaDataCheck/1.0'})
+              with urllib.request.urlopen(req, timeout=20) as r:
+                  data = r.read()
+                  print('HTTP status:', r.status)
+                  print('Downloaded bytes:', len(data))
+                  print('Table marker present:', b'<table' in data.lower())
+          except Exception as e:
+              print('Access test failed:', type(e).__name__, str(e))
+              raise
+          PY
