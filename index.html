@@ -1,12 +1,109 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>美原店 7日間差枚</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f3f5f9;color:#172033;font-family:-apple-system,BlinkMacSystemFont,sans-serif}
+header{background:#182d50;color:white;padding:22px 16px}
+h1{font-size:22px;margin:0 0 8px}
+header p{margin:0;color:#cbd5e1;font-size:13px}
+main{padding:16px;max-width:1000px;margin:auto}
+.card{background:white;border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px #1720330a}
+h2{font-size:17px;margin:0 0 12px}
+input{width:100%;padding:12px;border:1px solid #cbd5e1;border-radius:9px;font-size:16px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;white-space:nowrap;width:100%;font-size:13px}
+th,td{padding:11px 9px;text-align:right;border-bottom:1px solid #e5e7eb}
+th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:white}
+th{background:#eef2f8}
+.positive{color:#0876d0;font-weight:bold}
+.negative{color:#d12d45;font-weight:bold}
+.missing{color:#8893a3}
+.note{font-size:12px;color:#64748b;line-height:1.7}
+#status{font-size:14px;color:#475569}
+</style>
 </head>
 <body>
-<h1>美原店 7日間差枚</h1>
-<p>ダッシュボード準備中</p>
+<header>
+<h1>HYPER ARROW 美原店</h1>
+<p>台番号別・直近7日間差枚ダッシュボード</p>
+</header>
+<main>
+<section class="card">
+<h2>データ更新状況</h2>
+<div id="status">読み込み中...</div>
+<p class="note">未取得は0枚ではありません。7日分が揃った台だけ合計を表示します。</p>
+</section>
+<section class="card">
+<h2>台番号・機種名で検索</h2>
+<input id="search" placeholder="例：869、マイジャグラー">
+</section>
+<section class="card">
+<h2>7日間の台別差枚</h2>
+<div class="scroll"><table id="table"></table></div>
+<p class="note" id="source"></p>
+</section>
+</main>
+<script>
+const table=document.getElementById("table");
+const status=document.getElementById("status");
+const search=document.getElementById("search");
+let data={dates:[],machines:[],updated:null,source:null};
+
+function display(v){
+ if(v===null||v===undefined||!Number.isFinite(v))
+  return '<span class="missing">未取得</span>';
+ return '<span class="'+(v>0?'positive':v<0?'negative':'')+'">'+
+ (v>0?'+':'')+v.toLocaleString('ja-JP')+'</span>';
+}
+function render(){
+ const dates=data.dates||[];
+ const machines=(data.machines||[]).filter(m=>
+  (String(m.number)+' '+m.model).toLowerCase().includes(search.value.toLowerCase()));
+ let html='<thead><tr><th>台番号・機種</th>';
+ dates.forEach(d=>html+='<th>'+d.slice(5)+'</th>');
+ html+='<th>7日合計</th></tr></thead><tbody>';
+ machines.forEach(m=>{
+  const values=dates.map(d=>m.days?.[d]);
+  const complete=dates.length===7&&values.every(v=>typeof v==='number'&&Number.isFinite(v));
+  html+='<tr><td><b>'+escapeHTML(m.number)+'</b><div class="note">'+escapeHTML(m.model)+'</div></td>';
+  values.forEach(v=>html+='<td>'+display(v)+'</td>');
+  html+='<td>'+(complete?display(values.reduce((a,b)=>a+b,0)):'<span class="missing">未取得</span>')+'</td></tr>';
+ });
+ table.innerHTML=html+'</tbody>';
+ if(!machines.length){
+  table.innerHTML+='<tbody><tr><td colspan="'+(dates.length+2)+'" class="missing">表示できる台データがありません</td></tr></tbody>';
+ }
+ status.textContent='最終更新：'+(data.updated||'未更新')+' ／ 登録台数：'+data.machines.length+'台';
+ document.getElementById('source').textContent='出典：'+(data.source||'未登録');
+}
+function escapeHTML(value){
+ return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+search.addEventListener('input',render);
+fetch('./data.json?ts='+Date.now())
+.then(r=>{if(!r.ok)throw Error('データ未登録');return r.json()})
+.then(json=>{
+ data=json;
+ render();
+})
+.catch(()=>{
+ const today=new Date();
+ const jst=new Date(today.toLocaleString('en-US',{timeZone:'Asia/Tokyo'}));
+ const dates=[];
+ for(let i=7;i>=1;i--){
+  const d=new Date(jst);
+  d.setDate(d.getDate()-i);
+  dates.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));
+ }
+ data={dates,machines:[],updated:null,source:null};
+ render();
+ status.textContent='データファイル未登録（自動取得は未設定）';
+});
+</script>
 </body>
 </html>
