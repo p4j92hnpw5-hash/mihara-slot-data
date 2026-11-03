@@ -1,0 +1,31 @@
+name: Slonavi Access Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Slonavi access
+        run: |
+          python3 - <<'PY'
+          import urllib.request
+          import urllib.error
+
+          url = "https://slo-navi.com/data/2025-11-07-11019/"
+          req = urllib.request.Request(
+              url,
+              headers={"User-Agent": "Mozilla/5.0"}
+          )
+
+          try:
+              with urllib.request.urlopen(req, timeout=20) as res:
+                  body = res.read()
+                  print("HTTP status:", res.status)
+                  print("Bytes:", len(body))
+                  print("Contains 869:", b"869" in body)
+          except urllib.error.HTTPError as e:
+              print("HTTP error:", e.code)
+              raise
+          PY
