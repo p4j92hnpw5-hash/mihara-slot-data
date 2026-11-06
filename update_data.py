@@ -39,7 +39,7 @@ def number(value):
     return None
 
 def fetch(date):
-    url = BASE_URL + date
+    url = BASE_URL + date + "-11019/"
     req = urllib.request.Request(
         url, headers={"User-Agent": "Mozilla/5.0"}
     )
