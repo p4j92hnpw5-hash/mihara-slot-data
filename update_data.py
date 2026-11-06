@@ -86,18 +86,18 @@ def main():
             if diff is None:
                 continue
 
-            for machine in machines:
-                if machine.get("number") == machine_no:
-                    machine["days"][date] = diff
-                    machine["model"] = row[0]
-                    print(date, machine_no, diff)
+                        machine = next(
+                (m for m in machines if m.get("number") == machine_no),
+                None
+            )
+            if machine is None:
+                machine = {
+                    "number": machine_no,
+                    "model": row[0],
+                    "days": {d: None for d in dates}
+                }
+                machines.append(machine)
 
-    data["dates"] = dates
-    data["updated"] = datetime.now(TZ).isoformat()
-    data["source"] = "スロナビ（取得できた日・台のみ）"
-
-    with open("data.json", "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-
-if __name__ == "__main__":
-    main()
+            machine["days"][date] = diff
+            machine["model"] = row[0]
+            print(date, machine_no, diff)
