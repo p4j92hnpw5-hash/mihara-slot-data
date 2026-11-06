@@ -86,7 +86,7 @@ def main():
             if diff is None:
                 continue
 
-                        machine = next(
+            machine = next(
                 (m for m in machines if m.get("number") == machine_no),
                 None
             )
