@@ -5,8 +5,8 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from html.parser import HTMLParser
 
-URL = "https://slo-navi.com/data/2026-11-02"
 TZ = ZoneInfo("Asia/Tokyo")
+BASE_URL = "https://slo-navi.com/data/"
 
 class TableReader(HTMLParser):
     def __init__(self):
@@ -32,7 +32,14 @@ class TableReader(HTMLParser):
         elif tag == "tr" and self.row:
             self.rows.append(self.row)
 
-def get_rows(url):
+def number(value):
+    value = value.strip().replace(",", "").replace("+", "")
+    if re.fullmatch(r"-?\d+", value):
+        return int(value)
+    return None
+
+def fetch(date):
+    url = BASE_URL + date
     req = urllib.request.Request(
         url, headers={"User-Agent": "Mozilla/5.0"}
     )
@@ -41,12 +48,6 @@ def get_rows(url):
     parser = TableReader()
     parser.feed(html)
     return parser.rows
-
-def parse_number(value):
-    value = value.replace(",", "").replace("+", "").strip()
-    if re.fullmatch(r"-?\d+", value):
-        return int(value)
-    return None
 
 def main():
     today = datetime.now(TZ).date()
@@ -58,18 +59,42 @@ def main():
     with open("data.json", encoding="utf-8") as f:
         data = json.load(f)
 
-    for machine in data.get("machines", []):
+    machines = data.get("machines", [])
+    for machine in machines:
+        old = machine.get("days", {})
         machine["days"] = {
-            d: machine.get("days", {}).get(d)
-            for d in dates
-            if isinstance(machine.get("days", {}).get(d), int)
+            date: old.get(date) for date in dates
         }
 
-    # URLの対象日・店舗と取得構造が未検証のため、
-    # 現時点では未確認の数値を書き込まない。
+    for date in dates:
+        try:
+            rows = fetch(date)
+            print(date, "HTML rows:", len(rows))
+        except Exception as exc:
+            print(date, "取得失敗:", str(exc))
+            continue
+
+        for row in rows:
+            if len(row) < 4:
+                continue
+            # 機種名、台番号、G数、差枚の順番
+            if not re.fullmatch(r"\d+", row[1].strip()):
+                continue
+
+            machine_no = int(row[1].strip())
+            diff = number(row[3])
+            if diff is None:
+                continue
+
+            for machine in machines:
+                if machine.get("number") == machine_no:
+                    machine["days"][date] = diff
+                    machine["model"] = row[0]
+                    print(date, machine_no, diff)
+
     data["dates"] = dates
     data["updated"] = datetime.now(TZ).isoformat()
-    data["source"] = "自動更新準備中（差枚未取得）"
+    data["source"] = "スロナビ（取得できた日・台のみ）"
 
     with open("data.json", "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
