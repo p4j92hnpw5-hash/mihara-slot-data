@@ -101,3 +101,13 @@ def main():
             machine["days"][date] = diff
             machine["model"] = row[0]
             print(date, machine_no, diff)
+    data["machines"] = machines
+    data["dates"] = dates
+    data["updated"] = datetime.now(TZ).isoformat()
+    data["source"] = "スロナビ"
+
+    with open("data.json", "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+if __name__ == "__main__":
+    main()
